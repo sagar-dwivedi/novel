@@ -18,7 +18,6 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="WebNovel Scraper")
 
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
 
 

@@ -1,7 +1,10 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="max-w-5xl mx-auto space-y-6">
+<div class="max-w-5xl mx-auto space-y-6 relative" id="reader-container">
+    <!-- Scroll Progress Bar -->
+    <div id="scrollProgress" class="fixed top-0 left-0 h-1 bg-stone-800 w-0 z-50 transition-all"></div>
+
     <!-- Reader Header -->
     <header class="text-center space-y-2 pb-6 border-b border-stone-200">
         <h2 class="text-lg font-semibold">
@@ -15,7 +18,8 @@
     </header>
 
     <!-- Top Navigation -->
-    <nav class="flex flex-wrap items-center justify-between gap-3 bg-white rounded-lg border border-stone-200 p-4">
+    <nav aria-label="chapter navigation"
+        class="flex flex-wrap items-center justify-between gap-3 bg-white rounded-lg border border-stone-200 p-4 sticky top-0 z-40 backdrop-blur-md bg-white/80">
         {% if prev_chapter %}
         <a href="/read/{{ novel.slug }}/{{ prev_chapter.chapter_number }}"
             class="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 font-medium rounded-lg transition-colors">
@@ -27,12 +31,11 @@
         </div>
         {% endif %}
 
-        <select onchange="location = this.value;"
-            class="flex-1 min-w-0 max-w-md px-4 py-2 border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-400 focus:border-transparent bg-white text-stone-800">
-            <option value="">Jump to chapter...</option>
+        <select aria-label="Jump to chapter" onchange="location = this.value;"
+            class="flex-1 min-w-0 max-w-md px-4 py-2 border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-400 bg-white text-stone-800">
             {% for chap in all_chapters %}
-            <option value="/read/{{ novel.slug }}/{{ chap.chapter_number }}" {% if
-                chap.chapter_number==chapter.chapter_number %}selected{% endif %}>
+            <option value="/read/{{ novel.slug }}/{{ chap.chapter_number }}" {% if chap.chapter_number ==
+                chapter.chapter_number %}selected{% endif %}>
                 Chapter {{ chap.chapter_number }}: {{ chap.title }}
             </option>
             {% endfor %}
@@ -51,14 +54,15 @@
     </nav>
 
     <!-- Reader Content -->
-    <article class="bg-white rounded-lg border border-stone-200 p-8 sm:p-12">
+    <article class="bg-white rounded-lg border border-stone-200 p-8 sm:p-12 shadow-sm" id="reader-content">
         <div class="prose prose-stone max-w-none">
             {{ chapter.content|linebreaks }}
         </div>
     </article>
 
     <!-- Bottom Navigation -->
-    <nav class="flex flex-wrap items-center justify-between gap-3 bg-white rounded-lg border border-stone-200 p-4">
+    <nav aria-label="bottom navigation"
+        class="flex flex-wrap items-center justify-between gap-3 bg-white rounded-lg border border-stone-200 p-4">
         {% if prev_chapter %}
         <a href="/read/{{ novel.slug }}/{{ prev_chapter.chapter_number }}"
             class="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 font-medium rounded-lg transition-colors">
@@ -70,10 +74,16 @@
         </div>
         {% endif %}
 
-        <a href="/novel/{{ novel.slug }}"
-            class="px-4 py-2 bg-white hover:bg-stone-50 text-stone-800 font-medium rounded-lg border border-stone-300 transition-colors">
-            Back to Novel
-        </a>
+        <div class="flex gap-3">
+            <button id="toggleMode"
+                class="px-4 py-2 bg-white hover:bg-stone-50 text-stone-800 font-medium rounded-lg border border-stone-300 transition-colors">
+                🌓 Reading Mode
+            </button>
+            <a href="/novel/{{ novel.slug }}"
+                class="px-4 py-2 bg-white hover:bg-stone-50 text-stone-800 font-medium rounded-lg border border-stone-300 transition-colors">
+                Back to Novel
+            </a>
+        </div>
 
         {% if next_chapter %}
         <a href="/read/{{ novel.slug }}/{{ next_chapter.chapter_number }}"
@@ -89,66 +99,104 @@
 </div>
 
 <style>
-    /* Optimized typography for reading */
+    /* Reading experience */
     .prose {
         font-size: 1.125rem;
-        line-height: 1.8;
+        line-height: 1.85;
         color: #292524;
+        font-weight: 400;
+        text-align: justify;
+        max-width: 70ch;
+        margin: auto;
     }
 
     .prose p {
-        margin-bottom: 1.5em;
+        margin-bottom: 1.6em;
     }
 
-    .prose p:last-child {
-        margin-bottom: 0;
+    /* Reading mode: dark theme */
+    body.dark-mode {
+        background-color: #1c1917;
+        color: #e7e5e4;
     }
 
-    /* Smooth transitions for navigation */
+    body.dark-mode .bg-white {
+        background-color: #292524 !important;
+    }
+
+    body.dark-mode .text-stone-800 {
+        color: #fafaf9 !important;
+    }
+
+    body.dark-mode .border-stone-200 {
+        border-color: #3f3f46 !important;
+    }
+
+    body.dark-mode select,
+    body.dark-mode a,
+    body.dark-mode button {
+        background-color: #3f3f46 !important;
+        color: #f5f5f4 !important;
+    }
+
+    body.dark-mode .prose {
+        color: #e7e5e4;
+    }
+
+    /* Scroll progress bar animation */
+    #scrollProgress {
+        transition: width 0.15s linear;
+    }
+
     @media (prefers-reduced-motion: no-preference) {
-
         a,
         button,
         select {
-            transition-property: background-color, border-color, color;
-            transition-duration: 200ms;
-            transition-timing-function: ease-in-out;
+            transition: all 0.2s ease-in-out;
         }
-    }
-
-    /* Keyboard navigation highlight */
-    a:focus-visible,
-    button:focus-visible,
-    select:focus-visible {
-        outline: 2px solid #78716c;
-        outline-offset: 2px;
     }
 </style>
 
 <script>
+    // Scroll progress
+    document.addEventListener('scroll', () => {
+        const content = document.getElementById('reader-content');
+        const scrollTop = window.scrollY;
+        const height = content.offsetHeight - window.innerHeight;
+        const progress = Math.min(100, (scrollTop / height) * 100);
+        document.getElementById('scrollProgress').style.width = progress + '%';
+    });
+
+    // Reading mode toggle
+    const toggleBtn = document.getElementById('toggleMode');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const storedMode = localStorage.getItem('reading-mode');
+
+    if (storedMode === 'dark' || (!storedMode && prefersDark)) {
+        document.body.classList.add('dark-mode');
+    }
+
+    toggleBtn.addEventListener('click', () => {
+        document.body.classList.toggle('dark-mode');
+        localStorage.setItem('reading-mode',
+            document.body.classList.contains('dark-mode') ? 'dark' : 'light'
+        );
+    });
+
     // Keyboard shortcuts for navigation
     document.addEventListener('keydown', (e) => {
-        // Ignore if user is typing in an input/textarea
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
-            return;
-        }
+        if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
 
-        // Left arrow or 'A' key for previous chapter
-        if ((e.key === 'ArrowLeft' || e.key === 'a') && !e.ctrlKey && !e.metaKey) {
-            const prevLink = document.querySelector('a[href*="/read/"][href*="{{ prev_chapter.chapter_number if prev_chapter else '' }}"]');
-            if (prevLink) {
-                e.preventDefault();
-                prevLink.click();
-            }
-        }
+        const prevLink = document.querySelector('a[href*="/read/{{ novel.slug }}/{{ prev_chapter.chapter_number if prev_chapter else "" }}"]');
+        const nextLink = document.querySelector('a[href*="/read/{{ novel.slug }}/{{ next_chapter.chapter_number if next_chapter else "" }}"]');
 
-        // Right arrow or 'D' key for next chapter
-        if ((e.key === 'ArrowRight' || e.key === 'd') && !e.ctrlKey && !e.metaKey) {
-            const nextLink = document.querySelector('a[href*="/read/"][href*="{{ next_chapter.chapter_number if next_chapter else '' }}"]');
-            if (nextLink) {
-                e.preventDefault();
-                nextLink.click();
-            }
+        if ((e.key === 'ArrowLeft' || e.key === 'a') && prevLink) {
+            e.preventDefault();
+            prevLink.click();
+        }
+        if ((e.key === 'ArrowRight' || e.key === 'd') && nextLink) {
+            e.preventDefault();
+            nextLink.click();
         }
     });
 </script>
