@@ -1,92 +1,126 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}WebNovel Scraper{% endblock %}</title>
+
+    <!-- Meta & SEO -->
+    <meta name="description"
+        content="A simple and modern WebNovel Scraper to fetch and organize online novels efficiently.">
+    <meta name="theme-color" content="#f5f5f4">
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+
+    <!-- Tailwind CSS -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+    <!-- Custom Transitions -->
     <style>
         /* View Transition API setup */
         @view-transition {
             navigation: auto;
         }
-        
+
         /* Smooth transitions for navigation */
         ::view-transition-old(root),
         ::view-transition-new(root) {
             animation-duration: 0.3s;
         }
-        
+
         /* Optional: Custom transition for content */
         @keyframes fade-in {
-            from { opacity: 0; }
-            to { opacity: 1; }
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
         }
-        
+
         @keyframes fade-out {
-            from { opacity: 1; }
-            to { opacity: 0; }
+            from {
+                opacity: 1;
+            }
+
+            to {
+                opacity: 0;
+            }
         }
-        
+
         ::view-transition-old(root) {
             animation: 0.3s ease-out both fade-out;
         }
-        
+
         ::view-transition-new(root) {
             animation: 0.3s ease-out both fade-in;
         }
     </style>
-    <script>
-        // Initialize View Transition API for links
-        document.addEventListener('DOMContentLoaded', () => {
-            // Check if View Transition API is supported
-            if (!document.startViewTransition) {
-                return;
-            }
-            
-            // Intercept navigation clicks
-            document.addEventListener('click', (e) => {
-                const link = e.target.closest('a');
-                
-                if (
-                    link &&
-                    link.href &&
-                    link.origin === location.origin &&
-                    !link.hasAttribute('download') &&
-                    !link.target
-                ) {
-                    e.preventDefault();
-                    
-                    const url = link.href;
-                    
-                    document.startViewTransition(() => {
-                        window.location.href = url;
-                    });
-                }
-            });
-        });
-    </script>
+
+    {% block head %}{% endblock %}
 </head>
-<body class="bg-stone-50 text-stone-900 min-h-screen">
+
+<body
+    class="bg-stone-50 text-stone-900 dark:bg-stone-900 dark:text-stone-50 min-h-screen flex flex-col transition-colors">
+    <!-- Loading Overlay -->
+    <div id="page-loader"
+        class="hidden fixed inset-0 bg-white/70 dark:bg-stone-900/70 backdrop-blur-sm flex items-center justify-center text-stone-600 dark:text-stone-300 z-50">
+        Loading...
+    </div>
+
     <!-- Navigation -->
-    <nav class="bg-white border-b border-stone-200 sticky top-0 z-10 shadow-sm">
-        <div class="max-w-5xl mx-auto px-4 py-4">
+    <nav class="bg-white dark:bg-stone-800 border-b border-stone-200 dark:border-stone-700 sticky top-0 z-10 shadow-sm"
+        aria-label="Main navigation">
+        <div class="container mx-auto px-4 py-4">
             <h1 class="text-2xl font-bold">
-                <a href="/" class="text-stone-800 hover:text-stone-600 transition-colors">
+                <a href="/"
+                    class="text-stone-800 dark:text-stone-100 hover:text-stone-600 dark:hover:text-stone-300 transition-colors">
                     WebNovel Scraper
                 </a>
             </h1>
         </div>
     </nav>
-    
+
     <!-- Main Content -->
-    <main class="max-w-5xl mx-auto px-4 py-8">
+    <main class="container mx-auto px-4 py-8 flex-1">
         {% block content %}{% endblock %}
     </main>
-    
+
     <!-- Footer -->
-    <footer class="mt-16 py-6 text-center text-stone-500 text-sm border-t border-stone-200">
+    <footer
+        class="mt-16 py-6 text-center text-stone-500 dark:text-stone-400 text-sm border-t border-stone-200 dark:border-stone-700">
         <p>WebNovel Scraper &copy; 2025</p>
     </footer>
 </body>
+
+<script>
+    // Initialize View Transition API for links
+    document.addEventListener('DOMContentLoaded', () => {
+        if (!document.startViewTransition) return;
+
+        // Intercept navigation clicks
+        document.addEventListener('click', (e) => {
+            const link = e.target.closest('a');
+            if (
+                link &&
+                link.href &&
+                link.origin === location.origin &&
+                !link.hasAttribute('download') &&
+                !link.target
+            ) {
+                e.preventDefault();
+                const url = link.href;
+
+                // Show loader during transition
+                const loader = document.getElementById('page-loader');
+                if (loader) loader.classList.remove('hidden');
+
+                document.startViewTransition(() => {
+                    window.location.href = url;
+                });
+            }
+        });
+    });
+</script>
 </html>
