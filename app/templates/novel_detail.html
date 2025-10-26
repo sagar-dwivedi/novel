@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="space-y-8">
+    <!-- Novel Header -->
+    <section class="bg-white rounded-lg shadow-sm border border-stone-200 p-6">
+        <div class="flex flex-col sm:flex-row gap-6">
+            {% if novel.cover_url %}
+            <img src="{{ novel.cover_url }}" alt="{{ novel.title }} cover"
+                class="w-full sm:w-48 h-72 object-cover rounded-lg shadow-md" referrerpolicy="no-referrer">
+            {% endif %}
+            <div class="flex-1 space-y-3">
+                <h2 class="text-2xl font-bold text-stone-800">{{ novel.title }}</h2>
+                <p class="text-stone-600 font-medium">By {{ novel.author }}</p>
+                <p class="text-stone-700 leading-relaxed">{{ novel.description }}</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Scrape Chapters Section -->
+    <section class="bg-white rounded-lg shadow-sm border border-stone-200 p-6">
+        <h3 class="text-lg font-semibold text-stone-800 mb-4">Scrape Chapters</h3>
+        <form id="scrapeChaptersForm" onsubmit="scrapeChapters(event)" class="space-y-4">
+            <input type="hidden" name="novel_id" value="{{ novel.id }}">
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-stone-700 mb-2">
+                        Start Chapter
+                    </label>
+                    <input type="number" name="start_chapter" value="1" min="1" required
+                        class="w-full px-4 py-2 border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-400 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-stone-700 mb-2">
+                        End Chapter
+                    </label>
+                    <input type="number" name="end_chapter" placeholder="Leave empty for all" min="1"
+                        class="w-full px-4 py-2 border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-400 focus:border-transparent">
+                </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-3">
+                <button type="submit" id="scrapeButton"
+                    class="px-6 py-3 bg-stone-800 text-white font-medium rounded-lg hover:bg-stone-700 focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span class="button-text">Start Scraping</span>
+                </button>
+                <a href="/export/{{ novel.slug }}"
+                    class="px-6 py-3 bg-white text-stone-800 font-medium rounded-lg border border-stone-300 hover:bg-stone-50 focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-2 transition-colors text-center">
+                    Export as EPUB
+                </a>
+            </div>
+
+            <div id="progressBar" class="hidden h-2 bg-stone-200 rounded-full overflow-hidden">
+                <div class="h-full bg-stone-800 transition-all duration-300 ease-out" style="width: 0%"></div>
+            </div>
+        </form>
+    </section>
+
+    <!-- Chapters List -->
+    <section class="bg-white rounded-lg shadow-sm border border-stone-200 p-6">
+        <h3 class="text-lg font-semibold text-stone-800 mb-4">Chapters ({{ chapters|length }})</h3>
+
+        {% if chapters %}
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {% for chapter in chapters %}
+            <a href="/read/{{ novel.slug }}/{{ chapter.chapter_number }}"
+                class="px-4 py-3 bg-stone-50 hover:bg-stone-100 rounded-lg border border-stone-200 transition-colors">
+                <span class="text-sm font-medium text-stone-800">
+                    Chapter {{ chapter.chapter_number }}: {{ chapter.title }}
+                </span>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-12">
+            <div class="text-6xl mb-4">📖</div>
+            <p class="text-stone-600">
+                No chapters available yet.<br>
+                Use the form above to scrape chapters from the source.
+            </p>
+        </div>
+        {% endif %}
+    </section>
+</div>
+
+<!-- Toast Notification -->
+<div id="toast"
+    class="fixed bottom-6 right-6 px-6 py-4 rounded-lg shadow-lg transform translate-y-32 opacity-0 transition-all duration-300 ease-out flex items-center gap-3 z-50">
+    <span class="toast-icon text-xl"></span>
+    <span class="toast-message font-medium"></span>
+</div>
+
+<style>
+    /* Toast animations and styles */
+    #toast.show {
+        transform: translateY(0);
+        opacity: 1;
+    }
+
+    #toast.success {
+        background-color: rgb(34, 197, 94);
+        color: white;
+    }
+
+    #toast.error {
+        background-color: rgb(239, 68, 68);
+        color: white;
+    }
+
+    /* Progress bar animation */
+    #progressBar.active {
+        display: block;
+    }
+
+    #progressBar.active>div {
+        animation: progress 2s ease-in-out infinite;
+    }
+
+    @keyframes progress {
+        0% {
+            width: 0%;
+        }
+
+        50% {
+            width: 70%;
+        }
+
+        100% {
+            width: 100%;
+        }
+    }
+
+    /* Spinner animation */
+    .spinner {
+        display: inline-block;
+        width: 14px;
+        height: 14px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+</style>
+
+<script>
+    function showToast(message, type = 'success') {
+        const toast = document.getElementById('toast');
+        const icon = toast.querySelector('.toast-icon');
+        const messageEl = toast.querySelector('.toast-message');
+
+        toast.className = `fixed bottom-6 right-6 px-6 py-4 rounded-lg shadow-lg transform translate-y-32 opacity-0 transition-all duration-300 ease-out flex items-center gap-3 z-50 ${type}`;
+        icon.textContent = type === 'success' ? '✓' : '✕';
+        messageEl.textContent = message;
+
+        setTimeout(() => toast.classList.add('show'), 100);
+
+        setTimeout(() => {
+            toast.classList.remove('show');
+        }, 4000);
+    }
+
+    async function scrapeChapters(event) {
+        event.preventDefault();
+
+        const form = event.target;
+        const formData = new FormData(form);
+        const button = document.getElementById('scrapeButton');
+        const buttonText = button.querySelector('.button-text');
+        const progressBar = document.getElementById('progressBar');
+
+        button.disabled = true;
+        buttonText.innerHTML = '<span class="spinner"></span> Scraping...';
+        progressBar.classList.add('active');
+
+        try {
+            const response = await fetch('/scrape-chapters', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                showToast(result.message || 'Chapters scraped successfully!', 'success');
+
+                setTimeout(() => {
+                    if (document.startViewTransition) {
+                        document.startViewTransition(() => {
+                            location.reload();
+                        });
+                    } else {
+                        location.reload();
+                    }
+                }, 1500);
+            } else {
+                showToast(result.detail || 'Failed to scrape chapters', 'error');
+                button.disabled = false;
+                buttonText.textContent = 'Start Scraping';
+                progressBar.classList.remove('active');
+            }
+        } catch (error) {
+            showToast('Network error: ' + error.message, 'error');
+            button.disabled = false;
+            buttonText.textContent = 'Start Scraping';
+            progressBar.classList.remove('active');
+        }
+    }
+</script>
+{% endblock %}

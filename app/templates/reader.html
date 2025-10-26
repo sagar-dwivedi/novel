@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-6">
+    <!-- Reader Header -->
+    <header class="text-center space-y-2 pb-6 border-b border-stone-200">
+        <h2 class="text-lg font-semibold">
+            <a href="/novel/{{ novel.slug }}" class="text-stone-600 hover:text-stone-800 transition-colors">
+                {{ novel.title }}
+            </a>
+        </h2>
+        <h3 class="text-2xl font-bold text-stone-900">
+            Chapter {{ chapter.chapter_number }}: {{ chapter.title }}
+        </h3>
+    </header>
+
+    <!-- Top Navigation -->
+    <nav class="flex flex-wrap items-center justify-between gap-3 bg-white rounded-lg border border-stone-200 p-4">
+        {% if prev_chapter %}
+        <a href="/read/{{ novel.slug }}/{{ prev_chapter.chapter_number }}"
+            class="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 font-medium rounded-lg transition-colors">
+            ← Previous
+        </a>
+        {% else %}
+        <div class="px-4 py-2 bg-stone-50 text-stone-400 font-medium rounded-lg cursor-not-allowed">
+            ← Previous
+        </div>
+        {% endif %}
+
+        <select onchange="location = this.value;"
+            class="flex-1 min-w-0 max-w-md px-4 py-2 border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-400 focus:border-transparent bg-white text-stone-800">
+            <option value="">Jump to chapter...</option>
+            {% for chap in all_chapters %}
+            <option value="/read/{{ novel.slug }}/{{ chap.chapter_number }}" {% if
+                chap.chapter_number==chapter.chapter_number %}selected{% endif %}>
+                Chapter {{ chap.chapter_number }}: {{ chap.title }}
+            </option>
+            {% endfor %}
+        </select>
+
+        {% if next_chapter %}
+        <a href="/read/{{ novel.slug }}/{{ next_chapter.chapter_number }}"
+            class="px-4 py-2 bg-stone-800 hover:bg-stone-700 text-white font-medium rounded-lg transition-colors">
+            Next →
+        </a>
+        {% else %}
+        <div class="px-4 py-2 bg-stone-200 text-stone-400 font-medium rounded-lg cursor-not-allowed">
+            Next →
+        </div>
+        {% endif %}
+    </nav>
+
+    <!-- Reader Content -->
+    <article class="bg-white rounded-lg border border-stone-200 p-8 sm:p-12">
+        <div class="prose prose-stone max-w-none">
+            {{ chapter.content|linebreaks }}
+        </div>
+    </article>
+
+    <!-- Bottom Navigation -->
+    <nav class="flex flex-wrap items-center justify-between gap-3 bg-white rounded-lg border border-stone-200 p-4">
+        {% if prev_chapter %}
+        <a href="/read/{{ novel.slug }}/{{ prev_chapter.chapter_number }}"
+            class="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 font-medium rounded-lg transition-colors">
+            ← Previous
+        </a>
+        {% else %}
+        <div class="px-4 py-2 bg-stone-50 text-stone-400 font-medium rounded-lg cursor-not-allowed">
+            ← Previous
+        </div>
+        {% endif %}
+
+        <a href="/novel/{{ novel.slug }}"
+            class="px-4 py-2 bg-white hover:bg-stone-50 text-stone-800 font-medium rounded-lg border border-stone-300 transition-colors">
+            Back to Novel
+        </a>
+
+        {% if next_chapter %}
+        <a href="/read/{{ novel.slug }}/{{ next_chapter.chapter_number }}"
+            class="px-4 py-2 bg-stone-800 hover:bg-stone-700 text-white font-medium rounded-lg transition-colors">
+            Next →
+        </a>
+        {% else %}
+        <div class="px-4 py-2 bg-stone-200 text-stone-400 font-medium rounded-lg cursor-not-allowed">
+            Next →
+        </div>
+        {% endif %}
+    </nav>
+</div>
+
+<style>
+    /* Optimized typography for reading */
+    .prose {
+        font-size: 1.125rem;
+        line-height: 1.8;
+        color: #292524;
+    }
+
+    .prose p {
+        margin-bottom: 1.5em;
+    }
+
+    .prose p:last-child {
+        margin-bottom: 0;
+    }
+
+    /* Smooth transitions for navigation */
+    @media (prefers-reduced-motion: no-preference) {
+
+        a,
+        button,
+        select {
+            transition-property: background-color, border-color, color;
+            transition-duration: 200ms;
+            transition-timing-function: ease-in-out;
+        }
+    }
+
+    /* Keyboard navigation highlight */
+    a:focus-visible,
+    button:focus-visible,
+    select:focus-visible {
+        outline: 2px solid #78716c;
+        outline-offset: 2px;
+    }
+</style>
+
+<script>
+    // Keyboard shortcuts for navigation
+    document.addEventListener('keydown', (e) => {
+        // Ignore if user is typing in an input/textarea
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
+            return;
+        }
+
+        // Left arrow or 'A' key for previous chapter
+        if ((e.key === 'ArrowLeft' || e.key === 'a') && !e.ctrlKey && !e.metaKey) {
+            const prevLink = document.querySelector('a[href*="/read/"][href*="{{ prev_chapter.chapter_number if prev_chapter else '' }}"]');
+            if (prevLink) {
+                e.preventDefault();
+                prevLink.click();
+            }
+        }
+
+        // Right arrow or 'D' key for next chapter
+        if ((e.key === 'ArrowRight' || e.key === 'd') && !e.ctrlKey && !e.metaKey) {
+            const nextLink = document.querySelector('a[href*="/read/"][href*="{{ next_chapter.chapter_number if next_chapter else '' }}"]');
+            if (nextLink) {
+                e.preventDefault();
+                nextLink.click();
+            }
+        }
+    });
+</script>
+{% endblock %}
